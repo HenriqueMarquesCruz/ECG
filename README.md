@@ -30,16 +30,13 @@ De maneira geral, o sistema é composto pelas seguintes etapas:
 Eletrodos
    │
    ▼
-Aquisição do sinal de ECG
+Amplificador de instrumentação (INA 122)
    │
    ▼
-Amplificador de instrumentação
+Filtragem (Passa-baixa de 160Hz + rejeita-faixa de 59 a 61 Hz  + rejeita-faixa de 119 a 121 Hz + capacitor para cortar DC)
    │
    ▼
-Filtragem
-   │
-   ▼
-Condicionamento do sinal
+Ajuste de ganho + offset apara deixar de 0 a 3,3V 
    │
    ▼
 Conversão A/D (ESP32)
