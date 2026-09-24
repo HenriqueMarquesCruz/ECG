@@ -4,7 +4,6 @@ RECTANGLE Normal -64 -72 64 72
 WINDOW 0 0 -72 Bottom 2
 SYMATTR Prefix X
 SYMATTR Value INA122
-SYMATTR ModelFile C:\Users\henri\OneDrive\UFMG\8periodo\InstrumentacaoBiomedica\ProjetoFinal\ECG\INA122.LIB
 WINDOW 3 0 72 Top 2
 PIN -64 -48 LEFT 8
 PINATTR PinName INP
