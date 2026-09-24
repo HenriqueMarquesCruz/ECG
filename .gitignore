@@ -1,0 +1,18 @@
+# LTspice: generated simulation outputs
+/Simulacao/*.[Rr][Aa][Ww]
+/Simulacao/*.[Ll][Oo][Gg]
+/Simulacao/*.[Nn][Ee][Tt]
+/Simulacao/*.[Pp][Ll][Tt]
+/Simulacao/*.[Ff][Ff][Tt]
+/Simulacao/*.[Mm][Ee][Aa][Ss]
+/Simulacao/*.[Tt][Mm][Pp]
+/Simulacao/*.[Bb][Aa][Kk]
+
+# PSpice/OrCAD package files not used by the LTspice simulation
+/Simulacao/INA122.OLB
+/Simulacao/INA122_Test_Circuit.OPJ
+
+# Per-machine operating-system metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
