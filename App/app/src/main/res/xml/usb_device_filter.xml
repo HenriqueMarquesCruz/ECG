@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Conversores USB-serial comuns em placas ESP32. Plugar abre o app. -->
+<resources>
+    <usb-device vendor-id="4292" product-id="60000" /> <!-- CP2102 / CP2104 -->
+    <usb-device vendor-id="4292" product-id="60016" /> <!-- CP2105 -->
+    <usb-device vendor-id="6790" product-id="29987" /> <!-- CH340 -->
+    <usb-device vendor-id="6790" product-id="21972" /> <!-- CH9102 -->
+    <usb-device vendor-id="1027" product-id="24577" /> <!-- FT232R -->
+    <usb-device vendor-id="1027" product-id="24592" /> <!-- FT232H -->
+    <usb-device vendor-id="12346" product-id="4097" /> <!-- ESP32-S3/C3 USB nativo -->
+    <usb-device vendor-id="12346" product-id="16385" />
+</resources>

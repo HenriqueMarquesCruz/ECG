@@ -48,6 +48,12 @@ Processamento digital ((ESP32)
 Visualização do ECG
 ```
 
+O código do projeto está organizado em:
+
+* [`Simulacao/`](Simulacao/) — simulação LTspice do front-end analógico;
+* [`Firmware/`](Firmware/README.md) — firmware de referência do ESP32 (amostragem a 500 Hz, USB serial e Bluetooth LE);
+* [`App/`](App/README.md) — aplicativo Android **Sístole** para visualizar, gravar e exportar o ECG ([plano de funcionalidades](App/PLANO.md)).
+
 Cada etapa possui uma função específica para garantir que o sinal cardíaco seja adquirido com amplitude e qualidade suficientes para posterior análise.
 
 ---
