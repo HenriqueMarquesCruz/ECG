@@ -27,7 +27,7 @@ Desenvolver um sistema de instrumentação capaz de adquirir, condicionar e visu
 De maneira geral, o sistema é composto pelas seguintes etapas:
 
 ```text
-Eletrodos
+Eletrodos -+ Bateria de 9V como fonte simétrica 
    │
    ▼
 Amplificador de instrumentação (INA 122)

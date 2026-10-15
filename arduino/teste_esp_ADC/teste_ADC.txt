@@ -1,0 +1,33 @@
+#include <Arduino.h>
+
+const int pinoADC = 3; // GPIO 3 (ADC1_CH3 no ESP32-C3)
+
+// Taxa de amostragem: 1000 Hz (10 pontos por ciclo para um sinal de 100 Hz)
+const uint32_t FREQ_AMOSTRAGEM_HZ = 1000;
+const uint32_t INTERVALO_US = 1000000 / FREQ_AMOSTRAGEM_HZ; // 1000 microssegundos = 1 ms
+
+uint32_t ultimoTempo = 0;
+
+void setup() {
+  Serial.begin(115200);
+  
+  // Aguarda 1.5s para conexao da USB nativa
+  delay(1500);
+
+  analogReadResolution(12); // Resolução de 12 bits (0 a 4095)
+  // Atenuação padrão: 11dB (leituras até ~3.1V)
+}
+
+void loop() {
+  uint32_t agora = micros();
+
+  // Garante amostragem precisa a cada 1000 us (1 kHz)
+  if (agora - ultimoTempo >= INTERVALO_US) {
+    ultimoTempo = agora;
+
+    int tensao_mV = analogReadMilliVolts(pinoADC);
+
+    // Envia apenas o valor para evitar sobrecarga no buffer serial
+    Serial.println(tensao_mV);
+  }
+}
