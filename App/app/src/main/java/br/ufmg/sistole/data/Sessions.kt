@@ -58,7 +58,7 @@ data class SessionMeta(
         put("id", id); put("title", title); put("volunteer", volunteer); put("lead", lead)
         put("startedAt", startedAt); put("durationS", durationS); put("fs", fs)
         put("gain", calibration.gain); put("offsetV", calibration.offsetV); put("vref", calibration.vref); put("bits", calibration.bits)
-        put("hp", filters.highPassHz); put("lp", filters.lowPassHz); put("notch", filters.notch)
+        put("hp", filters.highPassHz); put("lp", filters.lowPassHz); put("notch", filters.notch); put("filt", filters.enabled)
         put("transport", transport); put("device", device); put("sampleCount", sampleCount)
         put("goodSeconds", goodSeconds); put("totalSeconds", totalSeconds)
         put("events", JSONArray().apply {
@@ -88,7 +88,7 @@ data class SessionMeta(
                 durationS = o.optDouble("durationS", 0.0),
                 fs = o.optDouble("fs", 500.0),
                 calibration = Calibration(o.optDouble("gain", 1000.0), o.optDouble("offsetV", 1.65), o.optDouble("vref", 3.3), o.optInt("bits", 12)),
-                filters = FilterConfig(o.optDouble("hp", 0.5), o.optDouble("lp", 40.0), o.optBoolean("notch", true)),
+                filters = FilterConfig(o.optDouble("hp", 0.5), o.optDouble("lp", 40.0), o.optBoolean("notch", true), o.optBoolean("filt", true)),
                 transport = o.optString("transport", ""),
                 device = o.optString("device", ""),
                 sampleCount = o.optLong("sampleCount", 0),

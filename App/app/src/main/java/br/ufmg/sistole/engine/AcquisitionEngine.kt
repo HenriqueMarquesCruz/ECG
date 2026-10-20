@@ -135,7 +135,7 @@ class AcquisitionEngine(
     }
 
     private fun calibrationOf(s: AppSettings) = Calibration(s.frontEndGain, s.adcOffsetV, s.vref, s.adcBits)
-    private fun filterOf(s: AppSettings) = FilterConfig(s.highPassHz, s.lowPassHz, s.notch)
+    private fun filterOf(s: AppSettings) = FilterConfig(s.highPassHz, s.lowPassHz, s.notch, s.digitalFilters)
     private fun newQrs() = QrsDetector(fs) { onBeat(it) }
 
     private fun applySettings(s: AppSettings) = synchronized(lock) {
@@ -569,6 +569,18 @@ class AcquisitionEngine(
         }
         _vitals.value = vitals
         _diag.value = diag
+    }
+
+    /**
+     * Tensão média na entrada do ADC nos últimos 2 s. Com os eletrodos em repouso ela é o offset
+     * do front-end: usada para calibrar a linha de base quando o passa-altas do app está desligado.
+     */
+    fun measureOffsetV(): Double? = synchronized(lock) {
+        val n = min(total, (2 * fs).toLong()).toInt()
+        if (n < fs) return null
+        var acc = 0.0
+        for (k in 0 until n) acc += rawAdc[((total - n + k) % CAP).toInt()]
+        acc / n / calibration.fullScale * calibration.vref
     }
 
     /** Potência de 60 Hz (dB re 1 mV²) antes e depois dos filtros digitais, nos últimos 2 s. */

@@ -85,12 +85,12 @@ fun SettingsScreen(nav: NavHostController) {
                     EcgSweep(app.engine, s.speedMmS, s.gainMmMv, base = 0.74f)
                     TraceCorner(Alignment.TopStart) { OverlayTag("Prévia ao vivo") }
                 } else {
-                    val cfg = FilterConfig(s.highPassHz, s.lowPassHz, s.notch)
+                    val cfg = FilterConfig(s.highPassHz, s.lowPassHz, s.notch, s.digitalFilters)
                     val preview = remember(cfg) { filteredDemo(cfg) }
                     EcgStrip(preview, 500.0, speedMmS = s.speedMmS, gainMmMv = s.gainMmMv, base = 0.7f)
                     TraceCorner(Alignment.TopStart) { OverlayTag("Prévia"); OverlayText("sinal ruidoso simulado") }
                 }
-                TraceCorner(Alignment.BottomEnd) { OverlayText(FilterConfig(s.highPassHz, s.lowPassHz, s.notch).label()) }
+                TraceCorner(Alignment.BottomEnd) { OverlayText(FilterConfig(s.highPassHz, s.lowPassHz, s.notch, s.digitalFilters).label()) }
             }
 
             SectionLabel("Exibição")
@@ -110,21 +110,43 @@ fun SettingsScreen(nav: NavHostController) {
                 }
             }
 
-            SectionLabel("Filtros")
+            SectionLabel("Filtros digitais")
             SList {
-                SRow("Passa-altas", detail = "Remove a deriva da linha de base") {
-                    SSegmented(listOf(if (s.highPassHz == 0.05) "0,05 Hz" else "0,05", if (s.highPassHz == 0.5) "0,5 Hz" else "0,5"), if (s.highPassHz == 0.05) 0 else 1, { i -> set { it.copy(highPassHz = if (i == 0) 0.05 else 0.5) } }, Modifier.width(130.dp), mono = true)
-                }
-                RowDivider()
-                SRow("Passa-baixas", detail = "Corta ruído muscular") {
-                    SSegmented(listOf(if (s.lowPassHz == 40.0) "40 Hz" else "40", if (s.lowPassHz == 150.0) "150 Hz" else "150"), if (s.lowPassHz == 40.0) 0 else 1, { i -> set { it.copy(lowPassHz = if (i == 0) 40.0 else 150.0) } }, Modifier.width(130.dp), mono = true)
-                }
-                RowDivider()
-                SRow("Notch 60 Hz", detail = if (s.lowPassHz > 100) "Rede elétrica, e 120 Hz junto" else "Interferência da rede elétrica") {
-                    SSwitch(s.notch, { v -> set { it.copy(notch = v) } }, "Notch 60 Hz")
-                }
+                SRow(
+                    "Filtrar no app",
+                    detail = if (s.digitalFilters) "Somam-se aos filtros analógicos do circuito" else "Desligado: o traçado é o sinal do ADC como chega do circuito",
+                    lead = SIcons.filter,
+                ) { SSwitch(s.digitalFilters, { v -> set { it.copy(digitalFilters = v) } }, "Filtrar no app") }
             }
-            SBanner(BannerLevel.INFO, "0,05–150 Hz preserva o segmento ST (modo diagnóstico). 0,5–40 Hz deixa o traçado mais limpo para monitorar. A gravação guarda o sinal bruto: dá para refiltrar depois.")
+            if (s.digitalFilters) {
+                SCard {
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Labeled("Passa-altas", "Remove a deriva da linha de base") {
+                            val v = listOf(0.0, 0.05, 0.5)
+                            SSegmented(listOf("Desligado", "0,05 Hz", "0,5 Hz"), v.indexOf(s.highPassHz).coerceAtLeast(0), { i -> set { it.copy(highPassHz = v[i]) } }, mono = true)
+                        }
+                        Labeled("Passa-baixas", "Corta ruído muscular e de alta frequência") {
+                            val v = listOf(0.0, 40.0, 150.0)
+                            SSegmented(listOf("Desligado", "40 Hz", "150 Hz"), v.indexOf(s.lowPassHz).coerceAtLeast(0), { i -> set { it.copy(lowPassHz = v[i]) } }, mono = true)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Notch 60 Hz", style = SType.rowTitle, color = S.c.ink)
+                                Sub(if (s.lowPassHz == 0.0 || s.lowPassHz > 100) "Rede elétrica, e 120 Hz junto" else "Interferência da rede elétrica")
+                            }
+                            SSwitch(s.notch, { v -> set { it.copy(notch = v) } }, "Notch 60 Hz")
+                        }
+                    }
+                }
+                SBanner(BannerLevel.INFO, "0,05–150 Hz preserva o segmento ST (modo diagnóstico). 0,5–40 Hz deixa o traçado mais limpo para monitorar. A gravação guarda sempre o sinal bruto: dá para refiltrar depois.")
+            }
+            if (!s.digitalFilters || s.highPassHz == 0.0) {
+                SBanner(
+                    BannerLevel.WARN,
+                    "Sem o passa-altas do app, a posição da linha de base depende do offset calibrado. Se o traço subir ou descer demais, use “Medir offset agora” em Calibração com os eletrodos em repouso.",
+                    title = "Linha de base pelo circuito",
+                )
+            }
 
             SectionLabel("Alarme de frequência")
             SCard {
@@ -151,6 +173,13 @@ fun SettingsScreen(nav: NavHostController) {
                 SRow("Ganho total", detail = "INA122 + estágio de ganho (V/V)", onClick = { editing = NumField.GAIN }) { Value(Fmt.decTrim(s.frontEndGain, 1)) }
                 RowDivider()
                 SRow("Offset na entrada do ADC", detail = "Tensão com 0 mV no eletrodo", onClick = { editing = NumField.OFFSET }) { Value("${Fmt.decTrim(s.adcOffsetV, 3)} V") }
+                RowDivider()
+                SRow(
+                    "Medir offset agora",
+                    detail = if (vitals.receiving) "Média do ADC nos últimos 2 s, com o voluntário parado" else "Conecte o aparelho para medir",
+                    lead = SIcons.refresh,
+                    onClick = if (vitals.receiving) ({ app.engine.measureOffsetV()?.let { v -> set { it.copy(adcOffsetV = Math.round(v * 1000) / 1000.0) } } }) else null,
+                )
                 RowDivider()
                 SRow("Referência do ADC", detail = "Fundo de escala", onClick = { editing = NumField.VREF }) { Value("${Fmt.decTrim(s.vref, 2)} V") }
                 RowDivider()
@@ -180,9 +209,12 @@ fun SettingsScreen(nav: NavHostController) {
 }
 
 @Composable
-private fun Labeled(label: String, content: @Composable () -> Unit) {
+private fun Labeled(label: String, detail: String? = null, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(label, style = SType.rowTitle, color = S.c.ink)
+        Column {
+            Text(label, style = SType.rowTitle, color = S.c.ink)
+            if (detail != null) Sub(detail)
+        }
         content()
     }
 }

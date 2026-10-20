@@ -89,6 +89,21 @@ class DspTest {
     }
 
     @Test
+    fun disabledFiltersPassSignalUnchanged() {
+        val off = FilterConfig(0.5, 40.0, true, enabled = false)
+        val chain = FilterChain(500.0, off)
+        val ecg = SyntheticEcg(noise = 0.05, mainsMv = 0.3)
+        for (i in 0 until 2000) {
+            val x = ecg.value(i / 500.0) + 1.2
+            assertEquals(x, chain.process(x), 0.0)
+        }
+        assertEquals("Sem filtro digital", off.label())
+        assertEquals("Sem filtro digital", FilterConfig(0.0, 0.0, false).label())
+        assertEquals("PB 40 Hz · Notch 60", FilterConfig(0.0, 40.0, true).label())
+        assertEquals("0,5–40 Hz · Notch 60", FilterConfig(0.5, 40.0, true).label())
+    }
+
+    @Test
     fun calibrationRoundTrip() {
         val c = Calibration(1000.0, 1.65, 3.3, 12)
         val adc = c.toAdc(1.0)

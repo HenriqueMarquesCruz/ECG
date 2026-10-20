@@ -96,8 +96,9 @@ fun ReviewScreen(nav: NavHostController, id: String) {
             withContext(Dispatchers.Default) {
                 val adc = samples ?: app.sessions.loadSamples(id).also { samples = it }
                 val filters = when (filterMode) {
-                    1 -> FilterConfig(0.5, 40.0, true)
-                    2 -> FilterConfig(0.05, 150.0, true)
+                    1 -> FilterConfig(0.5, 40.0, true, enabled = false)
+                    2 -> FilterConfig(0.5, 40.0, true)
+                    3 -> FilterConfig(0.05, 150.0, true)
                     else -> meta.filters
                 }
                 SessionAnalysis(meta, adc, filters)
@@ -298,7 +299,7 @@ private fun ReviewBody(
             }
         }
         SectionLabel("Refiltrar o sinal bruto")
-        SSegmented(listOf("Da gravação", "0,5–40 Hz", "0,05–150 Hz"), filterMode, setFilterMode, mono = true)
+        SSegmented(listOf("Gravação", "Sem filtro", "0,5–40", "0,05–150"), filterMode, setFilterMode, mono = true)
         Sub("Filtros desta análise: ${a.filters.label()} · calibração ganho ${Fmt.dec(m.calibration.gain, 0)} V/V · fs ${Fmt.dec(a.fs, 0)} Hz. A exportação usa estes filtros.", Modifier.padding(horizontal = 4.dp), maxLines = 3)
     }
 }

@@ -32,7 +32,8 @@ data class AppSettings(
     val speedMmS: Float = 25f,
     val gainMmMv: Float = 10f,
     val lead: Lead = Lead.DII,
-    // Filtros digitais
+    // Filtros digitais (o circuito já tem filtros analógicos; podem ser desligados)
+    val digitalFilters: Boolean = true,
     val highPassHz: Double = 0.5,
     val lowPassHz: Double = 40.0,
     val notch: Boolean = true,
@@ -92,6 +93,7 @@ class SettingsRepository(context: Context) {
                 speedMmS = getFloat("speed", d.speedMmS),
                 gainMmMv = getFloat("gain", d.gainMmMv),
                 lead = enumOr("lead", d.lead),
+                digitalFilters = getBoolean("dfilt", d.digitalFilters),
                 highPassHz = getFloat("hp", d.highPassHz.toFloat()).toDouble(),
                 lowPassHz = getFloat("lp", d.lowPassHz.toFloat()).toDouble(),
                 notch = getBoolean("notch", d.notch),
@@ -128,6 +130,7 @@ class SettingsRepository(context: Context) {
         putFloat("speed", s.speedMmS)
         putFloat("gain", s.gainMmMv)
         putString("lead", s.lead.name)
+        putBoolean("dfilt", s.digitalFilters)
         putFloat("hp", s.highPassHz.toFloat())
         putFloat("lp", s.lowPassHz.toFloat())
         putBoolean("notch", s.notch)

@@ -99,7 +99,7 @@ object Exporters {
         val records = max(1, (r.last - r.first + 1 + fs - 1) / fs)
         val annBytes = 120
         val signals = mutableListOf<EdfSignal>()
-        signals += EdfSignal("ECG ${m.lead}", "AgAgCl electrode", "mV", -10.0, 10.0, -32768, 32767, "HP:${a.filters.highPassHz}Hz LP:${a.filters.lowPassHz}Hz" + if (a.filters.notch) " N:60Hz" else "", fs)
+        signals += EdfSignal("ECG ${m.lead}", "AgAgCl electrode", "mV", -10.0, 10.0, -32768, 32767, a.filters.edfLabel(), fs)
         if (req.includeRaw) {
             val cal = m.calibration
             signals += EdfSignal("ECG ${m.lead} bruto", "AgAgCl electrode", "mV", cal.toMv(0), cal.toMv(cal.fullScale), 0, cal.fullScale, "HP:DC LP:160Hz N:60Hz (analogico)", fs)

@@ -144,6 +144,7 @@ Legenda: **[D]** está no design · **[+]** acrescentado pela pesquisa · **[I]*
 ### 3.9 Ajustes
 - [D] Prévia ao vivo do traçado no topo.
 - [D] Exibição: velocidade e ganho. Filtros: passa-altas 0,05 / 0,5 Hz, passa-baixas 40 / 150 Hz, notch 60 Hz.
+- [+] Chave **Filtrar no app** (e "Desligado" em cada filtro) para ver o sinal só com os filtros analógicos do circuito; "Medir offset agora" calibra a linha de base sem o passa-altas digital.
 - [D] Alarme de FC com faixa dupla (padrão 50–120), som, bipe por batimento, aviso de eletrodo solto.
 - [D] Tema: Automático · Monitor (escuro) · Papel (claro). Manter tela ligada.
 - [D] Perfis de voluntários (usados ao gravar).

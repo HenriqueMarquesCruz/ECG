@@ -61,13 +61,33 @@ class Biquad private constructor(
     }
 }
 
-/** Configuração dos filtros digitais do app. */
-data class FilterConfig(val highPassHz: Double, val lowPassHz: Double, val notch: Boolean) {
+/**
+ * Configuração dos filtros digitais do app. [enabled] = false (ou todos desligados) entrega o sinal
+ * exatamente como sai do ADC, para quem já filtra no circuito analógico. Frequência 0 desliga o filtro.
+ */
+data class FilterConfig(val highPassHz: Double, val lowPassHz: Double, val notch: Boolean, val enabled: Boolean = true) {
+    val hasHighPass get() = enabled && highPassHz > 0
+    val hasLowPass get() = enabled && lowPassHz > 0
+    val hasNotch get() = enabled && notch
+    val isBypass get() = !hasHighPass && !hasLowPass && !hasNotch
+
     fun label(): String {
-        val hp = fmtHz(highPassHz)
-        val lp = fmtHz(lowPassHz)
-        return "$hp–$lp Hz" + if (notch) " · Notch 60" else ""
+        if (isBypass) return "Sem filtro digital"
+        val band = when {
+            hasHighPass && hasLowPass -> "${fmtHz(highPassHz)}–${fmtHz(lowPassHz)} Hz"
+            hasHighPass -> "PA ${fmtHz(highPassHz)} Hz"
+            hasLowPass -> "PB ${fmtHz(lowPassHz)} Hz"
+            else -> null
+        }
+        return listOfNotNull(band, if (hasNotch) "Notch 60" else null).joinToString(" · ")
     }
+
+    /** Campo "prefiltering" do EDF. */
+    fun edfLabel(): String = if (isBypass) "none (app)" else listOfNotNull(
+        if (hasHighPass) "HP:${highPassHz}Hz" else null,
+        if (hasLowPass) "LP:${lowPassHz}Hz" else null,
+        if (hasNotch) "N:60Hz" else null,
+    ).joinToString(" ")
 
     private fun fmtHz(v: Double) = if (v == v.toLong().toDouble()) v.toLong().toString() else v.toString().replace('.', ',')
 }
@@ -83,10 +103,11 @@ class FilterChain(fs: Double, cfg: FilterConfig) {
     init {
         val nyq = fs / 2
         val list = mutableListOf<Biquad>()
-        if (cfg.highPassHz > 0) list += Biquad.highPass(fs, cfg.highPassHz)
-        list += Biquad.lowPass(fs, min(cfg.lowPassHz, nyq * 0.9))
-        if (cfg.notch && 60.0 < nyq * 0.95) list += Biquad.notch(fs, 60.0)
-        if (cfg.notch && cfg.lowPassHz > 100 && 120.0 < nyq * 0.95) list += Biquad.notch(fs, 120.0)
+        if (cfg.hasHighPass) list += Biquad.highPass(fs, cfg.highPassHz)
+        if (cfg.hasLowPass) list += Biquad.lowPass(fs, min(cfg.lowPassHz, nyq * 0.9))
+        if (cfg.hasNotch && 60.0 < nyq * 0.95) list += Biquad.notch(fs, 60.0)
+        // 120 Hz junto quando nada abaixo de 100 Hz corta essa harmônica
+        if (cfg.hasNotch && !(cfg.hasLowPass && cfg.lowPassHz <= 100) && 120.0 < nyq * 0.95) list += Biquad.notch(fs, 120.0)
         stages = list
     }
 
