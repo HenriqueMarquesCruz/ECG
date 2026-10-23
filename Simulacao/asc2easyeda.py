@@ -8,8 +8,9 @@ No EasyEDA Std:  File > Open > EasyEDA File...  e escolha o .json gerado.
 O .asc so descreve simulacao (sem footprints, sem fontes reais). Por isso:
   * as fontes V1, VDD e VDD1 viram conectores de borda (J1 entrada, J2 alimentacao);
   * V_ADC ganha o conector J3 (saida para o ADC) e o jumper de bypass do notch vira J4;
-  * os opamps UniversalOpAmp2 viram um simbolo generico de 5 pinos SEM footprint
-    (a escolha do CI real fica para quem monta a placa).
+  * os 7 opamps UniversalOpAmp2 viram unidades de 2 TL084 (quad, DIP-14): U2.1..U2.4 e U3.1..U3.3,
+    mais a 4a unidade de U3 como reserva (seguidor ligado ao terra). Como na biblioteca do
+    EasyEDA, so a unidade 1 de cada CI mostra os pinos de alimentacao (4 e 11).
 O circuito (nos, valores, designadores) segue exatamente o do LTspice. A geometria
 original e mantida (escala 0,625), quebrada em folhas A4 nos cortes SHEETS.
 """
@@ -65,15 +66,28 @@ def sym_cap():
         shapes=[("PL", [(0, 15), (20, 15)]), ("PL", [(0, 25), (20, 25)])])
 
 
-def sym_opamp():
-    # R0 do UniversalOpAmp2: In+ embaixo, In- em cima, V+ em cima, V- embaixo
-    return dict(pre="U?", pkg="", pins=[
-        ("1", "IN+", -20, 10, 1, 0, 10, False), ("2", "IN-", -20, -10, 1, 0, 10, False),
-        ("3", "V+", 0, -20, 0, 1, 10, False), ("4", "V-", 0, 20, 0, -1, 10, False),
-        ("5", "OUT", 20, 0, -1, 0, 10, False)],
-        shapes=[("PL", [(-10, -20), (-10, 20), (10, 0), (-10, -20)]),
-                ("PL", [(-8, -10), (-3, -10)]), ("PL", [(-8, 10), (-3, 10)]),
-                ("PL", [(-5.5, 7.5), (-5.5, 12.5)])])
+TL084_PKG = "PDIP-14_L19.3-W6.4-P2.54-LS7.9-BL-1"
+TL084_UNITS = {1: (1, 2, 3), 2: (7, 6, 5), 3: (8, 9, 10), 4: (14, 13, 12)}   # (OUT, IN-, IN+)
+# opamp LTspice -> (CI, unidade). U2: filtros PB1, PB2, PA1, PA2; U3: notch, ganho 1, ganho 2, reserva
+TL084_MAP = {"U2": ("U2", 1), "U3": ("U2", 2), "U4": ("U2", 3), "U5": ("U2", 4),
+             "U6": ("U3", 1), "U7": ("U3", 2), "U8": ("U3", 3)}
+
+
+def sym_tl084(unit, spare=False):
+    out, inn, inp = TL084_UNITS[unit]
+    pins = [(str(inp), "IN+", -20, 10, 1, 0, 10, False), (str(inn), "IN-", -20, -10, 1, 0, 10, False),
+            (str(out), "OUT", 20, 0, -1, 0, 10, False)]
+    if unit == 1:      # como na biblioteca: so a unidade 1 traz V+ (4) e V- (11)
+        pins += [("4", "V+", 0, -20, 0, 1, 10, False), ("11", "V-", 0, 20, 0, -1, 10, False)]
+    d = dict(pre="U?", pkg=TL084_PKG, pins=pins,
+             cpara_extra="subpart_no`%d`Supplier`LCSC`Supplier Part`C1346293`Manufacturer Part`TL084ACN`" % unit,
+             shapes=[("PL", [(-10, -20), (-10, 20), (10, 0), (-10, -20)]),
+                     ("PL", [(-8, -10), (-3, -10)]), ("PL", [(-8, 10), (-3, 10)]),
+                     ("PL", [(-5.5, 7.5), (-5.5, 12.5)])])
+    if spare:          # unidade livre: seguidor com a entrada no terra (nao deixa a entrada flutuando)
+        d["wires"] = [[(20, 0), (30, 0), (30, -30), (-30, -30), (-30, -10), (-20, -10)], [(-20, 10), (-30, 10)]]
+        d["flags"] = [(-30, 10, "0")]
+    return d
 
 
 def sym_ina():
@@ -184,7 +198,8 @@ def build_parts(syms):
         elif k == "cap":
             parts.append(Part(nm, fmt_value(a["Value"], "C"), sym_cap(), ox, oy, s["o"], sx))
         elif k.endswith("universalopamp2"):
-            parts.append(Part(nm, "AmpOp", sym_opamp(), ox, oy, s["o"], sx))
+            ic, unit = TL084_MAP[nm]
+            parts.append(Part("%s.%d" % (ic, unit), "TL084", sym_tl084(unit), ox, oy, s["o"], sx))
         elif k == "ina122":
             # INA122.asy: pinos em +-64 -> +-40 px; origem do SYMBOL = centro do corpo
             parts.append(Part(nm, "INA122", sym_ina(), ox, oy, s["o"], sx))
@@ -199,6 +214,9 @@ def build_parts(syms):
     parts.append(Part("J1", "ENTRADA", sym_header(["V1", "GND"], -1, 50), v1["x"] * S, (v1["y"] + 16) * S, "R0", v1["x"]))
     # VDD/VDD1: +Vcc (y=144), 0 (y=256), -Vcc (y=368) no mesmo x
     parts.append(Part("J2", "ALIM +-9V", sym_header(["+Vcc", "GND", "-Vcc"], -1, 70), vdd["x"] * S, (vdd["y"] + 16) * S, "R0", vdd["x"]))
+    # unidade 4 do segundo TL084: reserva, abaixo do estagio de ganho (sem alimentacao propria)
+    parts.append(Part("U3.4", "TL084", sym_tl084(4, spare=True), 4560 * S, 512 * S, "M180", 4560))
+    parts[-1].note = "unidade reserva"
     return parts
 
 
@@ -209,6 +227,18 @@ def main(src, dst):
     D = lambda x, y: (x * S, y * S)
     wires = [(x1 * S, y1 * S, x2 * S, y2 * S) for x1, y1, x2, y2 in wires_lt]
     flags = [(x * S, y * S, nm) for x, y, nm in flags_lt]
+
+    # unidades sem pinos de alimentacao: os rotulos +Vcc/-Vcc do .asc nao tem mais onde ligar
+    gone = set()
+    for p in parts:
+        if p.ref.startswith("U") and "." in p.ref and not any(pn[0] in ("4", "11") for pn in p.d["pins"]):
+            for lx, ly in ((0, -20), (0, 20)):
+                gone.add(tuple(round(v, 3) for v in p.tr(lx, ly)))
+    flags = [f for f in flags if (round(f[0], 3), round(f[1], 3)) not in gone or f[2] == "0"]
+    for p in parts:
+        for lx, ly, nm in p.d.get("flags", []):
+            fx, fy = p.tr(lx, ly)
+            flags.append((fx, fy, nm))
 
     # --- conectores de saida e jumper (posicoes dos flags V_ADC e JUMP1/JUMP2)
     fl = {nm: (x, y) for x, y, nm in flags}
@@ -455,7 +485,8 @@ def main(src, dst):
 
 def lib_shape(p, X, Y, nid, track, segs_px):
     d = p.d
-    cpara = "package`%s`pre`%s`name`%s`spicePre`%s`" % (d["pkg"] or "NONE", d["pre"], p.value, d["pre"][0])
+    cpara = "package`%s`pre`%s`name`%s`%sspicePre`%s`" % (
+        d["pkg"] or "NONE", d["pre"], p.value, d.get("cpara_extra", ""), d["pre"][0])
     parts_s = []
     gx = []
     gy = []
@@ -508,7 +539,7 @@ def lib_shape(p, X, Y, nid, track, segs_px):
     else:
         pt_p, pt_n, anc = (cx, y0 - 16), (cx, y0 - 5), "middle"
     pt_ptxt = "T~P~%s~%s~0~#000080~~8pt~~~~comment~%s~1~%s~%s~0" % (n(pt_p[0]), n(pt_p[1]), p.ref, anc, nid())
-    show_val = 0 if p.value == "AmpOp" else 1     # valor generico do opamp: so a referencia aparece
+    show_val = 0 if p.value == "TL084" else 1     # unidades do TL084: so a referencia aparece
     pt_ntxt = "T~N~%s~%s~0~#000080~~8pt~~~~comment~%s~%d~%s~%s~0" % (n(pt_n[0]), n(pt_n[1]), p.value, show_val, anc, nid())
     track(x0 - 4, y0 - 20), track(x1 + 50, y1 + 20)
     pin_s = []
@@ -524,7 +555,8 @@ def lib_shape(p, X, Y, nid, track, segs_px):
             anchor = "start"
         label_vis = 1 if shown else 0
         pin_s.append(
-            "P~show~0~%s~%s~%s~%d~%s~0^^%s~%s^^M %s %s L %s %s~#880000^^%d~%s~%s~0~%s~%s~~~#0000FF^^0~%s~%s~0~%s~%s~~~#0000FF^^0~%s~%s^^0~M 0 0 L 0 0" % (
+            "P~show~%d~%s~%s~%s~%d~%s~0^^%s~%s^^M %s %s L %s %s~#880000^^%d~%s~%s~0~%s~%s~~~#0000FF^^0~%s~%s~0~%s~%s~~~#0000FF^^0~%s~%s^^0~M 0 0 L 0 0" % (
+                4 if name in ("V+", "V-") else (2 if name == "OUT" else 0),
                 num, n(gx_), n(gy_), rot, nid(), n(gx_), n(gy_), n(gx_), n(gy_), n(ex), n(ey),
                 label_vis, n(nx), n(ny), name, anchor,
                 n(gx_ + ddx * 4), n(gy_ + ddy * 4 - 4), num, "start", n(gx_), n(gy_)))
