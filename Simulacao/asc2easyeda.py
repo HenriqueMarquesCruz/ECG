@@ -24,9 +24,9 @@ EDITOR_VERSION = "6.5.60"
 
 # (titulo, x_inicio, x_fim) em unidades LTspice. Os cortes caem entre blocos.
 SHEETS = [
-    ("1 Alimentacao, entrada, INA122 e PB1", -420, 1380),
-    ("2 PB2 e PA1", 1380, 2900),
-    ("3 PA2, jumper e notch", 2900, 4380),
+    ("1 Alimentacao, entrada, INA122 e PA1", -420, 1380),
+    ("2 PA2 e PB1", 1380, 2900),
+    ("3 PB2, jumper e notch", 2900, 4380),
     ("4 Ganho e saida ADC", 4380, 5200),
 ]
 
@@ -141,7 +141,8 @@ def read_asc(path):
             cur["attr"][t[1]] = " ".join(t[2:])
         elif t[0] == "TEXT":
             m = re.match(r"TEXT (-?\d+) (-?\d+) (\w+) (\d+) ([!;])(.*)", line)
-            if m and m.group(5) == ";":
+            # Diretivas de simulacao desativadas (.tran, .ac, etc.) nao sao legendas.
+            if m and m.group(5) == ";" and not m.group(6).lstrip().startswith("."):
                 texts.append((int(m.group(1)), int(m.group(2)), m.group(6)))
         elif t[0] == "RECTANGLE":
             rects.append(tuple(int(v) for v in t[2:6]))
