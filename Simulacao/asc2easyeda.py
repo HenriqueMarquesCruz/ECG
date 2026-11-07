@@ -24,9 +24,9 @@ EDITOR_VERSION = "6.5.60"
 
 # (titulo, x_inicio, x_fim) em unidades LTspice. Os cortes caem entre blocos.
 SHEETS = [
-    ("1 Alimentacao, entrada, INA122 e PB1", -420, 1380),
-    ("2 PB2 e PA1", 1380, 2900),
-    ("3 PA2, jumper e notch", 2900, 4380),
+    ("1 Alimentacao, entrada, INA122 e PA1", -420, 1380),
+    ("2 PA2 e PB1", 1380, 2900),
+    ("3 PB2, jumper e notch", 2900, 4380),
     ("4 Ganho e saida ADC", 4380, 5200),
 ]
 
@@ -68,9 +68,16 @@ def sym_cap():
 
 TL084_PKG = "PDIP-14_L19.3-W6.4-P2.54-LS7.9-BL-1"
 TL084_UNITS = {1: (1, 2, 3), 2: (7, 6, 5), 3: (8, 9, 10), 4: (14, 13, 12)}   # (OUT, IN-, IN+)
-# opamp LTspice -> (CI, unidade). U2: filtros PB1, PB2, PA1, PA2; U3: notch, ganho 1, ganho 2, reserva
-TL084_MAP = {"U2": ("U2", 1), "U3": ("U2", 2), "U4": ("U2", 3), "U5": ("U2", 4),
-             "U6": ("U3", 1), "U7": ("U3", 2), "U8": ("U3", 3)}
+
+
+def tl084_map(syms):
+    """opamp do LTspice -> (CI, unidade), pela posicao no esquematico (esquerda -> direita).
+    Os 4 primeiros (filtros) vao para U2.1..U2.4; os 3 seguintes (notch, ganho 1, ganho 2) para
+    U3.1..U3.3; U3.4 fica de reserva. Assim a numeracao segue a cadeia do sinal."""
+    ops = sorted((s["x"], s["attr"]["InstName"]) for s in syms if s["sym"].lower().endswith("universalopamp2"))
+    if len(ops) != 7:
+        raise SystemExit("esperava 7 opamps, achei %d" % len(ops))
+    return {nm: ("U2" if i < 4 else "U3", i + 1 if i < 4 else i - 3) for i, (_, nm) in enumerate(ops)}
 
 
 def sym_tl084(unit, spare=False):
@@ -141,7 +148,8 @@ def read_asc(path):
             cur["attr"][t[1]] = " ".join(t[2:])
         elif t[0] == "TEXT":
             m = re.match(r"TEXT (-?\d+) (-?\d+) (\w+) (\d+) ([!;])(.*)", line)
-            if m and m.group(5) == ";":
+            # Diretivas de simulacao desativadas (.tran, .ac, etc.) nao sao legendas.
+            if m and m.group(5) == ";" and not m.group(6).lstrip().startswith("."):
                 texts.append((int(m.group(1)), int(m.group(2)), m.group(6)))
         elif t[0] == "RECTANGLE":
             rects.append(tuple(int(v) for v in t[2:6]))
@@ -183,6 +191,7 @@ class Part:
 
 def build_parts(syms):
     parts, skipped = [], []
+    tl_map = tl084_map(syms)
     for s in syms:
         a = s["attr"]
         nm = a.get("InstName", "?")
@@ -198,7 +207,7 @@ def build_parts(syms):
         elif k == "cap":
             parts.append(Part(nm, fmt_value(a["Value"], "C"), sym_cap(), ox, oy, s["o"], sx))
         elif k.endswith("universalopamp2"):
-            ic, unit = TL084_MAP[nm]
+            ic, unit = tl_map[nm]
             parts.append(Part("%s.%d" % (ic, unit), "TL084", sym_tl084(unit), ox, oy, s["o"], sx))
         elif k == "ina122":
             # INA122.asy: pinos em +-64 -> +-40 px; origem do SYMBOL = centro do corpo
