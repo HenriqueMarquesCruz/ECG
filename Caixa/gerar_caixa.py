@@ -1,4 +1,4 @@
-"""Gera no Fusion a caixa do ECG (Sístole): base, tampa, as 6 chapas da blindagem e
+"""Gera no Fusion a caixa do ECG (Batidômetro): base, tampa, as 6 chapas da blindagem e
 peças de referência (PCB, ESP32-C3 Super Mini, baterias, espaçadores).
 
 Todas as medidas abaixo estão em mm (a API do Fusion trabalha em cm).
@@ -57,8 +57,8 @@ TALL_PARTS = [      # (x0, y0, x1, y1, altura acima da PCB) - só para referênc
 ]
 
 # espaçadores de latão M2,5 (padrão Raspberry Pi)
-LOW_SO = 6.0        # fêmea-fêmea, entre a chapa do fundo e a PCB
-UP_SO = 15.0        # macho-fêmea, entre a PCB e a chapa de cima
+LOW_SO = 6.0        # macho-fêmea (macho para cima, atravessa a PCB), entre a chapa do fundo e a PCB
+UP_SO = 15.0        # fêmea-fêmea, entre a PCB e a chapa de cima
 SO_D = 5.8          # sextavado 5 mm (diagonal)
 SCREW_D = 2.8
 CSK_D = 5.4         # M2,5 cabeça chata
@@ -86,7 +86,7 @@ JACK_PCB_X, JACK_Z = 50.0, 18.0
 JACK_CLEAR = 11.0   # furo na chapa e na pele interna (a luva do P2 não encosta na blindagem)
 LED_D = 3.0
 
-LABEL = "SÍSTOLE"
+LABEL = "BATIDÔMETRO"
 LABEL_FONT = "Century Gothic"
 
 # -------------------------------------------------------------- derivados
