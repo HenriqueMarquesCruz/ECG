@@ -16,11 +16,10 @@ Peças impressas:
 O fundo e a tampa são parafusados no corpo por parafusos auto-atarraxantes.
 
 Blindagem: a PCB fica numa câmara fechada por 6 chapas de alumínio.
-  - As paredes da câmara têm uma fenda de 1,5 mm vazada em cima e embaixo. A lateral
-    entra reta pela fenda e as pontas que sobram são dobradas para fora sobre a parede,
-    formando um "L" em cima e outro embaixo (a parede serve de gabarito da dobra).
-  - Nos cantos, uma ponte de 1,2 mm liga a parte de dentro da parede à de fora; ali
-    fica uma fresta vertical de ~1,7 mm entre as chapas.
+  - As 4 laterais são uma tira só, dobrada nos 4 cantos formando um "O" encostado por
+    dentro das paredes; as pontas da tira se sobrepõem no meio da parede direita.
+  - Em cima e embaixo a tira tem abas dobradas para fora, sobre a parede, que emendam
+    com a chapa de cima e a do fundo. Nos cantos as abas levam um corte para abrir.
   - O topo e a base das paredes da câmara têm um rebaixo de 2 mm (aba + chapa).
   - Os parafusos da tampa e do fundo atravessam chapa + aba e prensam tudo contra a
     parede. O contato vem do aperto.
@@ -34,11 +33,8 @@ import adsk.fusion
 
 # ---------------------------------------------------------------- parâmetros
 MIN_WALL = 1.2      # nenhuma parede impressa fica mais fina que isto
-SKIN_OUT = 4.5      # parede da câmara = parte de fora (parafuso + aba) + fenda + parte de dentro
-SLOT = 1.5          # fenda vazada (chapa de 1,0 mm + 0,5 de folga)
-SKIN_IN = MIN_WALL
-WALL = SKIN_OUT + SLOT + SKIN_IN    # paredes frontal, traseira, direita e divisória
-END_WALL = 5.0      # parede esquerda (baia, sem fenda)
+WALL = 5.0          # paredes da câmara e divisória (cabe o furo-piloto do parafuso)
+END_WALL = 5.0      # parede esquerda da baia
 PLATE_T = 2.5       # fundo
 LID_T = 2.5         # tampa
 H = 27.0            # altura do corpo (= altura interna)
@@ -50,7 +46,10 @@ SEAM = 0.4          # friso decorativo nas bordas da tampa e do fundo que encost
 SHEET_T = 1.0       # alumínio 1,0 mm
 RECESS = 2 * SHEET_T            # rebaixo no topo/base das paredes: aba + chapa
 SHEET_CLR = 0.3     # folga das chapas para a borda do rebaixo
-SLOT_CLR = 0.25     # folga da lateral dentro da fenda
+WEB_CLR = 0.1       # folga da tira lateral para a parede
+WEB = SHEET_T + 2 * WEB_CLR     # espaço ocupado pela tira junto à parede
+RING_OVERLAP = 10.0 # as pontas da tira em "O" se sobrepõem 10 mm
+BEND_DEDUCTION = 1.8            # desconto por dobra de 90° no alumínio de 1 mm
 
 # PCB (export OBJ do EasyEDA "teste3 revisado"): 94,56 x 92,41 mm, 3 furos de Ø3
 PCB_X, PCB_Y, PCB_T = 94.56, 92.41, 1.6
@@ -100,7 +99,7 @@ TOGGLE_POCKET = 14.0
 TOGGLE_PANEL = 2.5  # parede que sobra para a rosca da chave
 JACK_D = 6.2        # P2 3,5 mm de painel (PJ-392)
 JACK_PCB_X, JACK_Z = 40.0, 19.0     # entre o trimpot e os resistores, abaixo do rebaixo de cima
-JACK_PANEL = 1.5   # parte de fora da parede que sobra para a rosca do P2
+JACK_PANEL = 3.0   # parede que sobra para a rosca do P2
 JACK_POCKET_D = 12.0
 JACK_CLEAR = 11.0   # furo na chapa traseira (a luva do P2 não encosta na blindagem)
 WIRE_D = 7.0        # passagem dos fios baterias/ESP -> borne, pela divisória
@@ -113,8 +112,8 @@ LABEL_FONT = "Century Gothic"
 # -------------------------------------------------------------- derivados
 SHIELD_X = PCB_X + PCB_GAP_L + PCB_GAP
 SHIELD_Y = PCB_Y + 2 * PCB_GAP
-RX = SHIELD_X                           # câmara (entre as partes de dentro das paredes)
-RY = SHIELD_Y
+RX = SHIELD_X + 2 * WEB                 # câmara no plástico
+RY = SHIELD_Y + 2 * WEB
 CX0 = BAY_X + WALL
 CX1 = CX0 + RX
 OX0, OX1 = -END_WALL, CX1 + WALL
@@ -124,7 +123,7 @@ OZ0, OZ1 = -PLATE_T, H + LID_T
 # rebaixo das paredes da câmara (deixa MIN_WALL de borda por fora e do lado da baia)
 REC = (CX0 - WALL + MIN_WALL, OY0 + MIN_WALL, OX1 - MIN_WALL, OY1 - MIN_WALL)
 SHEET = (REC[0] + SHEET_CLR, REC[1] + SHEET_CLR, REC[2] - SHEET_CLR, REC[3] - SHEET_CLR)
-SC = (CX0, 0, CX1, RY)                  # espaço livre dentro da câmara
+SC = (CX0 + WEB, WEB, CX1 - WEB, RY - WEB)      # dentro da blindagem
 PCB_O = (SC[0] + PCB_GAP_L, SC[1] + PCB_GAP)
 
 
@@ -135,8 +134,8 @@ def pcb(x, y):
 HOLES = [pcb(*h) for h in PCB_HOLES]
 POST = pcb(*PCB_POST)
 
-# parafusos no meio da parte de fora das paredes
-XD, YF, YB, XR = BAY_X + SKIN_OUT / 2, OY0 + SKIN_OUT / 2, OY1 - SKIN_OUT / 2, OX1 - SKIN_OUT / 2
+# parafusos no meio das paredes
+XD, YF, YB, XR = BAY_X + WALL / 2, OY0 + WALL / 2, OY1 - WALL / 2, OX1 - WALL / 2
 X_MID = CX0 + 0.6 * RX
 BAY_SCREWS = [(OX0 + CORNER_IN, YF), (OX0 + CORNER_IN, YB)]
 # os parafusos da frente e de trás ficam fora dos cantos das chapas (o furo não pode
@@ -378,13 +377,6 @@ def build_frame(frame):
     # rebaixos onde ficam aba + chapa, em cima e embaixo
     box(CUT, *REC[:2], H - RECESS, *REC[2:], H, F, "Rebaixo chapa de cima")
     box(CUT, *REC[:2], 0, *REC[2:], RECESS, F, "Rebaixo chapa do fundo")
-    # fendas vazadas das laterais. Esquerda e direita vão de canto a canto; frontal e
-    # traseira param antes, deixando a ponte que segura a parte de dentro da parede.
-    s0, s1 = SKIN_IN, SKIN_IN + SLOT
-    box(CUT, CX0 - s1, -s1, 0, CX0 - s0, RY + s1, H, F, "Fenda esquerda")
-    box(CUT, CX1 + s0, -s1, 0, CX1 + s1, RY + s1, H, F, "Fenda direita")
-    box(CUT, CX0, -s1, 0, CX1, -s0, H, F, "Fenda frontal")
-    box(CUT, CX0, RY + s0, 0, CX1, RY + s1, H, F, "Fenda traseira")
 
     # pilotos dos parafusos da tampa (de cima) e do fundo (de baixo)
     circles(CUT, SCREWS, PILOT_D, H - PILOT_DEPTH, H, F, "Pilotos tampa")
@@ -407,9 +399,7 @@ def build_frame(frame):
 
     # P2 dos eletrodos na parede de trás da câmara, com rebaixo externo para a porca
     wall_cut("y", OY1 + 1, RY - 1, circle_at((JACK_X, 0, JACK_Z), JACK_D), F, "Conector eletrodos")
-    wall_cut("y", OY1 + 1, RY + SKIN_IN + SLOT + JACK_PANEL, circle_at((JACK_X, 0, JACK_Z), JACK_POCKET_D), F,
-             "Rebaixo P2")
-    wall_cut("y", RY - 1, RY + SKIN_IN + SLOT, circle_at((JACK_X, 0, JACK_Z), JACK_CLEAR), F, "Folga P2")
+    wall_cut("y", OY1 + 1, RY + JACK_PANEL, circle_at((JACK_X, 0, JACK_Z), JACK_POCKET_D), F, "Rebaixo P2")
 
 
 def fin(body, c, d, name):
@@ -527,13 +517,24 @@ def build_lid(lid):
     extrude(sk.sketchTexts.add(ti), CUT, OZ1, -0.5, L, "Gravação nome")
 
 
-def u_sheet(name, web, flange):
-    """Lateral dobrada em U: alma junto à parede + abas para fora em cima e embaixo."""
-    body = box(NEW, web[0], web[1], SHEET_T, web[2], web[3], H - SHEET_T, name=name).bodies.item(0)
-    box(JOIN, *flange[:2], SHEET_T, *flange[2:], RECESS, [body], name + " aba de baixo")
-    box(JOIN, *flange[:2], H - RECESS, *flange[2:], H - SHEET_T, [body], name + " aba de cima")
-    body.name = "Blindagem " + name
+def ring_sheet():
+    """Laterais numa tira só, dobrada em "O" por dentro das paredes, com abas para fora
+    em cima e embaixo (sem aba nos cantos: ali a aba leva um corte para abrir)."""
+    c = WEB_CLR
+    x0, y0, x1, y1 = CX0 + c, c, CX1 - c, RY - c            # face externa do "O"
+    body = box(NEW, x0, y0, SHEET_T, x1, y1, H - SHEET_T, name="Tira lateral").bodies.item(0)
+    box(CUT, x0 + SHEET_T, y0 + SHEET_T, 0, x1 - SHEET_T, y1 - SHEET_T, H, [body], "Tira lateral oca")
+    for z0, z1, n in ((SHEET_T, RECESS, "baixo"), (H - RECESS, H - SHEET_T, "cima")):
+        box(JOIN, x0, SHEET[1], z0, x1, y0 + SHEET_T, z1, [body], "Aba frente " + n)
+        box(JOIN, x0, y1 - SHEET_T, z0, x1, SHEET[3], z1, [body], "Aba trás " + n)
+        box(JOIN, SHEET[0], y0, z0, x0 + SHEET_T, y1, z1, [body], "Aba esquerda " + n)
+        box(JOIN, x1 - SHEET_T, y0, z0, SHEET[2], y1, z1, [body], "Aba direita " + n)
+    body.name = "Blindagem lateral (O)"
     color(body, "aluminio")
+    flat = 2 * ((x1 - x0) + (y1 - y0)) - 4 * BEND_DEDUCTION + RING_OVERLAP
+    tall = (H - 2 * SHEET_T) + 2 * (SHEET[3] - y1 + SHEET_T) - 2 * BEND_DEDUCTION
+    print("tira em O: recorte %.1f x %.1f mm (alma %.1f de altura, abas %.1f)" % (
+        flat, tall, H - 2 * SHEET_T, SHEET[3] - y1 + SHEET_T))
     return body
 
 
@@ -550,25 +551,10 @@ def build_shield():
     top.name = "Blindagem cima"
     color(top, "aluminio")
 
-    # laterais dentro das fendas, encostadas no lado de fora da fenda
-    o = SKIN_IN + SLOT - SLOT_CLR           # face externa da chapa, a partir da câmara
-    i = o - SHEET_T
-    sides = {
-        "frontal": u_sheet("frontal", (CX0 + SLOT_CLR, -o, CX1 - SLOT_CLR, -i),
-                           (CX0 + SLOT_CLR, SHEET[1], CX1 - SLOT_CLR, -i)),
-        "traseira": u_sheet("traseira", (CX0 + SLOT_CLR, RY + i, CX1 - SLOT_CLR, RY + o),
-                            (CX0 + SLOT_CLR, RY + i, CX1 - SLOT_CLR, SHEET[3])),
-        "esquerda": u_sheet("esquerda", (CX0 - o, -o, CX0 - i, RY + o),
-                            (SHEET[0], -o, CX0 - i, RY + o)),
-        "direita": u_sheet("direita", (CX1 + i, -o, CX1 + o, RY + o),
-                           (CX1 + i, -o, SHEET[2], RY + o)),
-    }
-    for n, b in sides.items():
-        circles(CUT, in_chamber, SCREW_D, 0, H, [b], "Furos abas " + n)
-    wall_cut("x", CX0 - o - 1, CX0 - i + 1, circle_at((0, WIRE_Y, WIRE_Z), WIRE_D), [sides["esquerda"]],
-             "Furo fios chapa")
-    wall_cut("y", RY + o + 1, RY + i - 1, circle_at((JACK_X, 0, JACK_Z), JACK_CLEAR), [sides["traseira"]],
-             "Furo P2 chapa")
+    ring = ring_sheet()
+    circles(CUT, in_chamber, SCREW_D, 0, H, [ring], "Furos abas")
+    wall_cut("x", CX0 - 1, CX0 + 2, circle_at((0, WIRE_Y, WIRE_Z), WIRE_D), [ring], "Furo fios chapa")
+    wall_cut("y", RY + 1, RY - 2, circle_at((JACK_X, 0, JACK_Z), JACK_CLEAR), [ring], "Furo P2 chapa")
 
     # referências
     p = ref_box("REF PCB", "pcb", PCB_O[0], PCB_O[1], Z_PCB, PCB_O[0] + PCB_X, PCB_O[1] + PCB_Y, Z_PCB + PCB_T)
@@ -582,7 +568,7 @@ def build_shield():
             ESP_C[1] + USB_W / 2, ESP_Z0 + ESP_T + USB_H)
     for i, x0 in enumerate((BAT_GAP, BAT_GAP + BAT_W + BAT_RIB)):
         ref_box("REF Bateria 9V %d" % (i + 1), "bateria", x0, RY - BAT_L, 0, x0 + BAT_W, RY, BAT_H)
-    return {"fundo": bot, "cima": top, **sides}
+    return {"fundo": bot, "cima": top, "lateral (O)": ring}
 
 
 def sheet_report(sheets):
