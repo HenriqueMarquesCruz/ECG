@@ -45,10 +45,13 @@ SEAM = 0.4          # friso decorativo nas bordas da tampa e do fundo que encost
 
 SHEET_T = 1.0       # alumínio 1,0 mm
 RECESS = 2 * SHEET_T            # rebaixo no topo/base das paredes: aba + chapa
-SHEET_CLR = 0.3     # folga das chapas para a borda do rebaixo
-WEB_CLR = 0.1       # folga da tira lateral para a parede
+# folgas para chapa cortada e dobrada à mão (erro típico de ±0,5 mm por corte/dobra)
+SHEET_CLR = 0.8     # chapas de cima e do fundo: folga para a borda do rebaixo
+WEB_CLR = 0.75      # tira em "O": folga para a parede (o "O" fica 1,5 mm menor que a câmara)
 WEB = SHEET_T + 2 * WEB_CLR     # espaço ocupado pela tira junto à parede
-RING_OVERLAP = 10.0 # as pontas da tira em "O" se sobrepõem 10 mm
+FLANGE_SLACK = 1.2  # a ponta da aba para 1,2 mm antes da borda do rebaixo
+RING_OVERLAP = 15.0 # as pontas da tira se sobrepõem 15 mm (dá para ajustar o comprimento)
+SHEET_HOLE_D = 3.5  # furos e entalhes nas chapas (parafuso de 2,5 com folga para furo à mão)
 BEND_DEDUCTION = 1.8            # desconto por dobra de 90° no alumínio de 1 mm
 
 # PCB (export OBJ do EasyEDA "teste3 revisado"): 94,56 x 92,41 mm, 3 furos de Ø3
@@ -522,19 +525,20 @@ def ring_sheet():
     em cima e embaixo (sem aba nos cantos: ali a aba leva um corte para abrir)."""
     c = WEB_CLR
     x0, y0, x1, y1 = CX0 + c, c, CX1 - c, RY - c            # face externa do "O"
+    tip = (REC[0] + FLANGE_SLACK, REC[1] + FLANGE_SLACK, REC[2] - FLANGE_SLACK, REC[3] - FLANGE_SLACK)
     body = box(NEW, x0, y0, SHEET_T, x1, y1, H - SHEET_T, name="Tira lateral").bodies.item(0)
     box(CUT, x0 + SHEET_T, y0 + SHEET_T, 0, x1 - SHEET_T, y1 - SHEET_T, H, [body], "Tira lateral oca")
     for z0, z1, n in ((SHEET_T, RECESS, "baixo"), (H - RECESS, H - SHEET_T, "cima")):
-        box(JOIN, x0, SHEET[1], z0, x1, y0 + SHEET_T, z1, [body], "Aba frente " + n)
-        box(JOIN, x0, y1 - SHEET_T, z0, x1, SHEET[3], z1, [body], "Aba trás " + n)
-        box(JOIN, SHEET[0], y0, z0, x0 + SHEET_T, y1, z1, [body], "Aba esquerda " + n)
-        box(JOIN, x1 - SHEET_T, y0, z0, SHEET[2], y1, z1, [body], "Aba direita " + n)
+        box(JOIN, x0, tip[1], z0, x1, y0 + SHEET_T, z1, [body], "Aba frente " + n)
+        box(JOIN, x0, y1 - SHEET_T, z0, x1, tip[3], z1, [body], "Aba trás " + n)
+        box(JOIN, tip[0], y0, z0, x0 + SHEET_T, y1, z1, [body], "Aba esquerda " + n)
+        box(JOIN, x1 - SHEET_T, y0, z0, tip[2], y1, z1, [body], "Aba direita " + n)
     body.name = "Blindagem lateral (O)"
     color(body, "aluminio")
+    fl = tip[3] - y1 + SHEET_T
     flat = 2 * ((x1 - x0) + (y1 - y0)) - 4 * BEND_DEDUCTION + RING_OVERLAP
-    tall = (H - 2 * SHEET_T) + 2 * (SHEET[3] - y1 + SHEET_T) - 2 * BEND_DEDUCTION
-    print("tira em O: recorte %.1f x %.1f mm (alma %.1f de altura, abas %.1f)" % (
-        flat, tall, H - 2 * SHEET_T, SHEET[3] - y1 + SHEET_T))
+    tall = (H - 2 * SHEET_T) + 2 * fl - 2 * BEND_DEDUCTION
+    print("tira em O: recorte %.1f x %.1f mm (alma %.1f de altura, abas %.1f)" % (flat, tall, H - 2 * SHEET_T, fl))
     return body
 
 
@@ -542,17 +546,17 @@ def build_shield():
     """As 6 chapas (para cortar em alumínio) e as peças de referência (não imprimir)."""
     in_chamber = [s for s in CHAMBER_SCREWS]
     bot = box(NEW, *SHEET[:2], 0, *SHEET[2:], SHEET_T, name="Chapa fundo").bodies.item(0)
-    circles(CUT, HOLES + [POST], SCREW_D, -0.5, SHEET_T + 0.5, [bot], "Furos suportes")
-    circles(CUT, in_chamber, SCREW_D, -0.5, SHEET_T + 0.5, [bot], "Furos parafusos fundo")
+    circles(CUT, HOLES + [POST], SHEET_HOLE_D, -0.5, SHEET_T + 0.5, [bot], "Furos suportes")
+    circles(CUT, in_chamber, SHEET_HOLE_D, -0.5, SHEET_T + 0.5, [bot], "Furos parafusos fundo")
     bot.name = "Blindagem fundo"
     color(bot, "aluminio")
     top = box(NEW, *SHEET[:2], H - SHEET_T, *SHEET[2:], H, name="Chapa cima").bodies.item(0)
-    circles(CUT, in_chamber, SCREW_D, H - SHEET_T - 0.5, H + 0.5, [top], "Furos parafusos cima")
+    circles(CUT, in_chamber, SHEET_HOLE_D, H - SHEET_T - 0.5, H + 0.5, [top], "Furos parafusos cima")
     top.name = "Blindagem cima"
     color(top, "aluminio")
 
     ring = ring_sheet()
-    circles(CUT, in_chamber, SCREW_D, 0, H, [ring], "Furos abas")
+    circles(CUT, in_chamber, SHEET_HOLE_D, 0, H, [ring], "Furos abas")
     wall_cut("x", CX0 - 1, CX0 + 2, circle_at((0, WIRE_Y, WIRE_Z), WIRE_D), [ring], "Furo fios chapa")
     wall_cut("y", RY + 1, RY - 2, circle_at((JACK_X, 0, JACK_Z), JACK_CLEAR), [ring], "Furo P2 chapa")
 
